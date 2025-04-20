@@ -6,9 +6,9 @@ from constants import GEMINI_API_KEY
 import re
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
 def analyze_image(img: Image, dict_of_vars: dict):
+    model = genai.GenerativeModel(model_name="gemini-2.0-flash")
     dict_of_vars_str = json.dumps(dict_of_vars, ensure_ascii=False)
     prompt = (
         f"You have been given an image with some mathematical expressions, equations, or graphical problems, and you need to solve them. "
@@ -20,39 +20,43 @@ def analyze_image(img: Image, dict_of_vars: dict):
         f"5 * 4 => 20, 8 / 2 => 4, 2 + 3 => 5, 5 + 20 => 25, 25 - 4 => 21. "
         f"YOU CAN HAVE FIVE TYPES OF EQUATIONS/EXPRESSIONS IN THIS IMAGE, AND ONLY ONE CASE SHALL APPLY EVERY TIME: "
         f"Following are the cases: "
-        f"1. Simple mathematical expressions like 2 + 2, 3 * 4, 5 / 6, 7 - 8, etc.: In this case, solve and return the answer in the format of a LIST OF ONE DICT {{'expr': 'full explanation or any analysis of the reasoning , any text should be returned here or the expression solved in steps and points using \\n not just \n,  every steps, pointers, important points should be returned here in 'expr' and do not write the result in 'expr' ', 'result': 'calculated answer'}} in text of the response json do not return anything outside of expr"
+        f"1. Simple mathematical expressions like 2 + 2, 3 * 4, 5 / 6, 7 - 8, etc.: In this case, solve and return the answer in the format of a LIST OF ONE DICT [{{'expr': given expression, 'result': calculated answer}}], do not give any kind of explanation just  expressions "
         f"2. Set of Equations like x^2 + 2x + 1 = 0, 3y + 4x = 0, 5x^2 + 6y + 7 = 12, etc.: In this case, solve for the given variable, and the format should be a COMMA SEPARATED LIST OF DICTS, with dict 1 as {{'expr': 'x', 'result': 2, 'assign': True}} and dict 2 as {{'expr': 'y', 'result': 5, 'assign': True}}. This example assumes x was calculated as 2, and y as 5. Include as many dicts as there are variables. "
         f"3. Assigning values to variables like x = 4, y = 5, z = 6, etc.: In this case, assign values to variables and return another key in the dict called {{'assign': True}}, keeping the variable as 'expr' and the value as 'result' in the original dictionary. RETURN AS A LIST OF DICTS. "
         f"4. Analyzing Graphical Math problems, which are word problems represented in drawing form, such as cars colliding, trigonometric problems, problems on the Pythagorean theorem, adding runs from a cricket wagon wheel, etc. These will have a drawing representing some scenario and accompanying information with the image. PAY CLOSE ATTENTION TO DIFFERENT COLORS FOR THESE PROBLEMS. You need to return the answer in the format of a LIST OF ONE DICT [{{'expr': given expression, 'result': calculated answer}}]. "
         f"5. Detecting Abstract Concepts that a drawing might show, such as love, hate, jealousy, patriotism, or a historic reference to war, invention, discovery, quote, etc. USE THE SAME FORMAT AS OTHERS TO RETURN THE ANSWER, where 'expr' will be the explanation of the drawing, and 'result' will be the abstract concept. "
         f"Analyze the equation or expression in this image and return the answer according to the given rules: "
-        # f"Make sure to use extra backslashes for escape characters like \\f -> \\\\f, \\n -> \\\\n, etc. "
+        f"Make sure to use extra backslashes for escape characters like \\f -> \\\\f, \\n -> \\\\n, etc. "
         f"Here is a dictionary of user-assigned variables. If the given expression has any of these variables, use its actual value from this dictionary accordingly: {dict_of_vars_str}. "
         f"DO NOT USE BACKTICKS OR MARKDOWN FORMATTING. "
-        f"DO NOT RETURN Here's the analysis of the image: or any kind of starting sentence "
         f"PROPERLY QUOTE THE KEYS AND VALUES IN THE DICTIONARY FOR EASIER PARSING WITH Python's ast.literal_eval."
-        f"and please return everything in like this {{'expr': 'full explanation or any analysis of the reasoning , any text should be returned here or the expression solved in steps and points using \n and every steps, pointers, important points should be returned here in 'expr' and do not write the result in 'expr' ', 'result': 'calculated answer'}} in text of the response json do not return anything outside of expr"
+        f"true => should be True, false => should be False, null => should be None"
+        f"again any theory or explanation should be inside 'expr'"
+        f"do not return anything explanation analysis or starting statement before 'expr' like Based on the image, here's the analysis: return these in 'expr'"
     )
-    def latex_safe_text(line):
-        return r'\text{' + line.replace('\\', r'\\').replace('_', r'\_') + '}'
+    # def latex_safe_text(line):
+    #     return r'\text{' + line.replace('\\', r'\\').replace('_', r'\_') + '}'
     
     response = model.generate_content([prompt, img])
-    # print(response)
-    print(response.text)
+    print(response)
+    # print(response.text)
     # Remove any markdown-style code blocks like ```json ... ```  (for Gemini-2.0-flash parsing)
-    cleaned_text = re.sub(r"```(?:json)?\n(.*?)```", r"\1", response.text, flags=re.DOTALL).strip()
-    print(cleaned_text)
+    cleaned_response = re.sub(r"```(?:json)?\n(.*?)```", r"\1", response.text, flags=re.DOTALL).strip()
+    print(cleaned_response)
+    cleaned_response = cleaned_response.replace("true", "True").replace("false", "False").replace("null", "None")
+    print(cleaned_response)
     answers = []
     try:
-        answers = ast.literal_eval(cleaned_text)
+        answers = ast.literal_eval(cleaned_response)
+        # answers = json.loads(cleaned_response)
     except Exception as e:
         print(f"Error in parsing response from gemini API: {e}")
     print("returned answer:", answers)
     for answer in answers:
         # Split into lines, wrap each in \text{}, and join with line breaks
-        expr_lines = answer['expr'].split('\n')
-        latex_lines = [latex_safe_text(line) for line in expr_lines]
-        answer['expr'] = r' \\ '.join(latex_lines)
+        # expr_lines = answer['expr'].split('\n')
+        # latex_lines = [latex_safe_text(line) for line in expr_lines]
+        # answer['expr'] = r' \\ '.join(latex_lines)
         if 'assign' in answer:
             answer['assign'] = True
         else: answer['assign'] = False
