@@ -6,7 +6,7 @@ Frontend: https://github.com/krmahi/AI-Drawing-Calculator-and-Problem-Solver
 
 ## 🌐 Live API
 
-Access the live API here: [ai-drawing-calculator-and-problem-solver-backend.vercel.app](https://ai-drawing-calculator-and-problem-solver-backend.vercel.app)
+Access the live API here: [drawing-calc-server.vercel.app](https://drawing-calc-server.vercel.app)
 
 ## 🛠️ Features
 
